@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tìm từ cho Pet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1a202c;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        .drag-zone {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            background-color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            min-height: 100px;
+        }
+        .drop-zone {
+            background-color: #cbd5e0;
+            padding: 0.5rem 1rem;
+            border: 2px dashed #a0aec0;
+            border-radius: 0.5rem;
+            text-align: center;
+            min-width: 100px;
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 2;
+        }
+        .draggable {
+            background-color: #4299e1;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.2s ease-in-out;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .draggable:active {
+            cursor: grabbing;
+        }
+        .correct {
+            background-color: #48bb78;
+        }
+        .incorrect {
+            background-color: #f56565;
+        }
+        .result-message {
+            margin-top: 1.5rem;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .image-container img {
+            width: 150px;
+            height: auto;
+            border-radius: 0.5rem;
+        }
+        .hidden {
+            display: none;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .firework-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 100;
+        }
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: firework 1s ease-out forwards;
+            box-shadow: 0 0 10px 5px rgba(255, 255, 255, 0.5);
+        }
+        @keyframes firework {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8 flex items-center justify-center">
+
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-4">Tìm từ cho Pet</h1>
+
+        <!-- Màn hình bắt đầu -->
+        <div id="start-screen" class="p-6">
+            <p class="text-gray-700 mb-4">Vui lòng nhập tên của bạn để bắt đầu:</p>
+            <input type="text" id="playerName" placeholder="Tên của bạn" class="mb-6 px-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="startButton" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-300 w-full">
+                Bắt đầu làm bài
+            </button>
+        </div>
+
+        <!-- Màn hình chọn bài tập -->
+        <div id="exercise-select-screen" class="hidden p-6">
+            <p class="text-gray-700 mb-4 font-semibold text-lg">Chào mừng, <span id="displayPlayerName"></span>! Hãy chọn một bài tập:</p>
+            <div id="exercise-list" class="flex flex-wrap justify-center gap-4">
+                <!-- Buttons will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Màn hình trò chơi chính -->
+        <div id="game-screen" class="hidden">
+            <p class="text-gray-700 mb-6" id="exercise-title">Hãy kéo và thả các từ vào đúng vị trí để hoàn thành đoạn văn.</p>
+
+            <div id="exercise-content">
+                <!-- Nội dung bài tập sẽ được tải động ở đây -->
+            </div>
+
+            <div id="drag-zone" class="drag-zone mb-6">
+                <!-- Các từ sẽ được tạo động ở đây -->
+            </div>
+
+            <button id="check-button" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-300">
+                Kiểm tra
+            </button>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mt-4">
+                <button id="listen-button" class="hidden bg-teal-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-teal-600 transition duration-300">
+                    Nghe đoạn văn
+                </button>
+                <button id="next-button" class="hidden bg-gray-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-600 transition duration-300">
+                    Bài tập tiếp theo
+                </button>
+            </div>
+            <div id="result-message" class="result-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Lớp phủ cho hiệu ứng pháo hoa -->
+    <div id="fireworks-overlay" class="firework-container hidden"></div>
+
+    <script>
+        const startScreen = document.getElementById('start-screen');
+        const playerNameInput = document.getElementById('playerName');
+        const startButton = document.getElementById('startButton');
+        const exerciseSelectScreen = document.getElementById('exercise-select-screen');
+        const displayPlayerName = document.getElementById('displayPlayerName');
+        const exerciseList = document.getElementById('exercise-list');
+        const gameScreen = document.getElementById('game-screen');
+        const checkButton = document.getElementById('check-button');
+        const listenButton = document.getElementById('listen-button');
+        const nextButton = document.getElementById('next-button');
+        const resultMessage = document.getElementById('result-message');
+        const dragZone = document.getElementById('drag-zone');
+        const exerciseContent = document.getElementById('exercise-content');
+        const exerciseTitle = document.getElementById('exercise-title');
+        const fireworksOverlay = document.getElementById('fireworks-overlay');
+
+        let draggedItem = null;
+        let currentExerciseIndex = 0;
+        let audioPlayer = null;
+        let playerName = "";
+
+        const exercises = [
+            {
+                title: "Bài tập 1: Pets",
+                content: `
+                    <div class="image-container">
+                        <img src="https://placehold.co/200x200/4299e1/ffffff?text=Dog" alt="Hình ảnh một chú chó">
+                        <img src="https://placehold.co/200x200/48bb78/ffffff?text=Cat" alt="Hình ảnh một chú mèo">
+                        <img src="https://placehold.co/200x200/a0aec0/ffffff?text=Rabbit" alt="Hình ảnh một chú thỏ">
+                        <img src="https://placehold.co/200x200/9f7aea/ffffff?text=Fish" alt="Hình ảnh một chú cá">
+                    </div>
+                    <div class="text-left mb-6">
+                        <p class="mb-2 text-lg">Pets are animals that live in your house. Some are big and some are <span id="drop-1" class="drop-zone" data-correct-answer="small"></span>.</p>
+                        <p class="mb-2 text-lg">Dogs, cats, rabbits and <span id="drop-2" class="drop-zone" data-correct-answer="fish"></span> are good pets because they are cute and funny.</p>
+                        <p class="mb-2 text-lg">Some pets like eating meat, and some like eating <span id="drop-3" class="drop-zone" data-correct-answer="fruit"></span>.</p>
+                        <p class="mb-2 text-lg">You have to give your pet food every day, take it for a <span id="drop-4" class="drop-zone" data-correct-answer="walk"></span> and wash it.</p>
+                        <p class="mb-2 text-lg">Pets love to play games, so go to the <span id="drop-5" class="drop-zone" data-correct-answer="park"></span> and play with a ball or a toy with them!</p>
+                    </div>
+                `,
+                words: ["small", "fish", "fruit", "walk", "park", "animals", "balloon", "house"],
+                fullText: "Pets are animals that live in your house. Some are big and some are small. Dogs, cats, rabbits and fish are good pets because they are cute and funny. Some pets like eating meat, and some like eating fruit. You have to give your pet food every day, take it for a walk and wash it. Pets love to play games, so go to the park and play with a ball or a toy with them!"
+            },
+            {
+                title: "Bài tập 2: Park",
+                content: `
+                    <div class="image-container">
+                        <img src="https://placehold.co/200x200/48bb78/ffffff?text=Park" alt="Hình ảnh công viên">
+                        <img src="https://placehold.co/200x200/a0aec0/ffffff?text=Playground" alt="Hình ảnh sân chơi">
+                    </div>
+                    <div class="text-left mb-6">
+                        <p class="mb-2 text-lg">Lots of children go to the park to play football, baseball and other sports. Some parks are big and some parks are <span id="drop-1" class="drop-zone" data-correct-answer="small"></span>.</p>
+                        <p class="mb-2 text-lg">There are different places to play games, relax and <span id="drop-2" class="drop-zone" data-correct-answer="talk"></span> your friends. Some children go to the park after <span id="drop-3" class="drop-zone" data-correct-answer="school"></span> and at the weekend. Children can also go to the park with their <span id="drop-4" class="drop-zone" data-correct-answer="parents"></span> and grandparents. Parks are good places to play, climb, run and <span id="drop-5" class="drop-zone" data-correct-answer="jump"></span>.</p>
+                    </div>
+                `,
+                words: ["small", "talk", "school", "parents", "jump", "play", "spiders", "dog"],
+                fullText: "Lots of children go to the park to play football, baseball and other sports. Some parks are big and some parks are small. There are different places to play games, relax and talk your friends. Some children go to the park after school and at the weekend. Children can also go to the park with their parents and grandparents. Parks are good places to play, climb, run and jump."
+            },
+            {
+                title: "Bài tập 3: Beach",
+                content: `
+                    <div class="image-container">
+                        <img src="https://placehold.co/200x200/f6ad55/ffffff?text=Beach" alt="Hình ảnh bãi biển">
+                        <img src="https://placehold.co/200x200/9f7aea/ffffff?text=Sandcastle" alt="Hình ảnh lâu đài cát">
+                    </div>
+                    <div class="text-left mb-6">
+                        <p class="mb-2 text-lg">The beach is a place with lots of sand. Some people go to the beach in summer on <span id="drop-1" class="drop-zone" data-correct-answer="holiday"></span>. You can do lots of different things at the beach. You can <span id="drop-2" class="drop-zone" data-correct-answer="swim"></span> in the sea, read a <span id="drop-3" class="drop-zone" data-correct-answer="book"></span> and collect shells. There are some small and big <span id="drop-4" class="drop-zone" data-correct-answer="fish"></span> in the sea at the beach. Some people like making <span id="drop-5" class="drop-zone" data-correct-answer="sandcastles"></span> in the sand - it's fun!</p>
+                    </div>
+                `,
+                words: ["holiday", "swim", "book", "fish", "sandcastles", "shell", "ice cream", "sand"],
+                fullText: "The beach is a place with lots of sand. Some people go to the beach in summer on holiday. You can do lots of different things at the beach. You can swim in the sea, read a book and collect shells. There are some small and big fish in the sea at the beach. Some people like making sandcastles in the sand - it's fun!"
+            },
+            {
+                title: "Bài tập 4: Horses",
+                content: `
+                    <div class="image-container">
+                        <img src="https://placehold.co/200x200/5a67d8/ffffff?text=Horses" alt="Hình ảnh ngựa">
+                        <img src="https://placehold.co/200x200/ed8936/ffffff?text=Farm" alt="Hình ảnh trang trại">
+                    </div>
+                    <div class="text-left mb-6">
+                        <p class="mb-2 text-lg">Horses are animals that live on a <span id="drop-1" class="drop-zone" data-correct-answer="farm"></span>. They can be <span id="drop-2" class="drop-zone" data-correct-answer="big"></span> or small and they have four <span id="drop-3" class="drop-zone" data-correct-answer="legs"></span>. They have long hair and big <span id="drop-4" class="drop-zone" data-correct-answer="teeth"></span> and they like <span id="drop-5" class="drop-zone" data-correct-answer="eating"></span> apples and carrots - yum!</p>
+                    </div>
+                `,
+                words: ["farm", "big", "legs", "teeth", "eating", "spiders", "water", "animals"],
+                fullText: "Horses are animals that live on a farm. They can be big or small and they have four legs. They have long hair and big teeth and they like eating apples and carrots - yum!"
+            }
+        ];
+
+        function showScreen(screenId) {
+            startScreen.classList.add('hidden');
+            exerciseSelectScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function renderExerciseButtons() {
+            exerciseList.innerHTML = '';
+            exercises.forEach((exercise, index) => {
+                const button = document.createElement('button');
+                button.textContent = exercise.title;
+                button.classList.add('px-6', 'py-3', 'bg-blue-500', 'text-white', 'rounded-lg', 'font-bold', 'hover:bg-blue-600', 'transition', 'duration-300');
+                button.addEventListener('click', () => {
+                    currentExerciseIndex = index;
+                    loadExercise();
+                    showScreen('game-screen');
+                });
+                exerciseList.appendChild(button);
+            });
+        }
+
+        function showFireworks() {
+            fireworksOverlay.classList.remove('hidden');
+            const colors = ['#f56565', '#48bb78', '#4299e1', '#9f7aea', '#f6ad55'];
+            const numFireworks = 20;
+
+            for (let i = 0; i < numFireworks; i++) {
+                const firework = document.createElement('div');
+                firework.classList.add('firework');
+                firework.style.left = `${Math.random() * 100}vw`;
+                firework.style.top = `${Math.random() * 100}vh`;
+                firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                fireworksOverlay.appendChild(firework);
+
+                setTimeout(() => {
+                    firework.remove();
+                }, 2000);
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function renderWords() {
+            dragZone.innerHTML = '';
+            const currentWords = exercises[currentExerciseIndex].words;
+            const shuffledWords = shuffleArray([...currentWords]);
+            shuffledWords.forEach(word => {
+                const div = document.createElement('div');
+                div.classList.add('draggable', 'p-2', 'rounded-md', 'bg-blue-500', 'text-white', 'cursor-grab', 'select-none', 'transition', 'duration-200', 'ease-in-out');
+                div.setAttribute('draggable', 'true');
+                div.setAttribute('data-word', word);
+                div.textContent = word;
+                dragZone.appendChild(div);
+            });
+            attachDragListeners();
+        }
+
+        function attachDragListeners() {
+            const draggables = document.querySelectorAll('.draggable');
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggedItem = e.target;
+                    setTimeout(() => {
+                        e.target.style.opacity = '0.5';
+                    }, 0);
+                });
+
+                draggable.addEventListener('dragend', () => {
+                    if (draggedItem) {
+                         draggedItem.style.opacity = '1';
+                         draggedItem = null;
+                    }
+                });
+            });
+        }
+
+        function loadExercise() {
+            exerciseTitle.textContent = exercises[currentExerciseIndex].title;
+            exerciseContent.innerHTML = exercises[currentExerciseIndex].content;
+            renderWords();
+            resultMessage.classList.add('hidden');
+            checkButton.classList.remove('hidden');
+            listenButton.classList.add('hidden');
+            nextButton.classList.add('hidden');
+        }
+
+        document.addEventListener('dragover', (e) => {
+            if (e.target.classList.contains('drop-zone')) {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('dragenter', (e) => {
+            if (e.target.classList.contains('drop-zone')) {
+                e.preventDefault();
+                e.target.classList.add('bg-gray-300');
+            }
+        });
+        document.addEventListener('dragleave', (e) => {
+            if (e.target.classList.contains('drop-zone')) {
+                e.target.classList.remove('bg-gray-300');
+            }
+        });
+        document.addEventListener('drop', (e) => {
+            if (e.target.classList.contains('drop-zone') && draggedItem) {
+                e.preventDefault();
+                e.target.classList.remove('bg-gray-300');
+                if (e.target.children.length === 0) {
+                    e.target.appendChild(draggedItem);
+                } else {
+                    const existingItem = e.target.children[0];
+                    const parentOfExisting = dragZone;
+                    parentOfExisting.appendChild(existingItem);
+                    e.target.appendChild(draggedItem);
+                }
+            }
+        });
+
+        checkButton.addEventListener('click', () => {
+            const currentDropZones = document.querySelectorAll('.drop-zone');
+            let allCorrect = true;
+            let correctCount = 0;
+
+            currentDropZones.forEach(dropZone => {
+                const droppedItem = dropZone.querySelector('.draggable');
+                if (droppedItem) {
+                    const droppedWord = droppedItem.getAttribute('data-word');
+                    const correctAnswer = dropZone.getAttribute('data-correct-answer');
+                    
+                    if (droppedWord === correctAnswer) {
+                        droppedItem.classList.remove('incorrect');
+                        droppedItem.classList.add('correct');
+                        correctCount++;
+                    } else {
+                        droppedItem.classList.remove('correct');
+                        droppedItem.classList.add('incorrect');
+                        allCorrect = false;
+                    }
+                } else {
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect) {
+                resultMessage.textContent = `Chúc mừng, bạn đã hoàn thành bài tập một cách xuất sắc!`;
+                resultMessage.classList.add('text-green-600');
+                resultMessage.classList.remove('text-red-600', 'hidden');
+                checkButton.classList.add('hidden');
+                listenButton.classList.remove('hidden');
+                nextButton.classList.remove('hidden');
+                showFireworks();
+            } else {
+                resultMessage.textContent = `${playerName}, bạn đã đúng ${correctCount} trên ${currentDropZones.length} câu. Hãy thử lại!`;
+                resultMessage.classList.add('text-red-600');
+                resultMessage.classList.remove('text-green-600', 'hidden');
+            }
+        });
+        
+        // Hàm chuyển đổi base64 sang ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Hàm chuyển đổi PCM sang WAV
+        function pcmToWav(pcmData, sampleRate) {
+            const dataLength = pcmData.length * 2;
+            const buffer = new ArrayBuffer(44 + dataLength);
+            const view = new DataView(buffer);
+
+            let offset = 0;
+            const writeString = (str) => {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            };
+
+            writeString('RIFF');
+            view.setUint32(offset, 36 + dataLength, true); offset += 4;
+            writeString('WAVE');
+            writeString('fmt ');
+            view.setUint32(offset, 16, true); offset += 4;
+            view.setUint16(offset, 1, true); offset += 2;
+            view.setUint16(offset, 1, true); offset += 2;
+            view.setUint32(offset, sampleRate, true); offset += 4;
+            view.setUint32(offset, sampleRate * 2, true); offset += 4;
+            view.setUint16(offset, 2, true); offset += 2;
+            view.setUint16(offset, 16, true); offset += 2;
+            writeString('data');
+            view.setUint32(offset, dataLength, true); offset += 4;
+
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(offset, pcmData[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        // Hàm xử lý khi nhấn nút nghe (sử dụng API để chuyển văn bản thành giọng nói)
+        listenButton.addEventListener('click', async () => {
+            listenButton.textContent = 'Đang tải...';
+            listenButton.disabled = true;
+
+            const textToSpeak = exercises[currentExerciseIndex].fullText;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: textToSpeak }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Zephyr" }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            let response;
+            try {
+                response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API TTS:", error);
+                resultMessage.textContent = 'Có lỗi xảy ra, không thể phát âm thanh.';
+                resultMessage.classList.remove('hidden');
+                listenButton.textContent = 'Nghe đoạn văn';
+                listenButton.disabled = false;
+                return;
+            }
+
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+                
+                if (audioPlayer) {
+                    audioPlayer.pause();
+                    audioPlayer.currentTime = 0;
+                }
+                audioPlayer = new Audio(audioUrl);
+                audioPlayer.play();
+                
+                audioPlayer.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    listenButton.textContent = 'Nghe đoạn văn';
+                    listenButton.disabled = false;
+                };
+            } else {
+                console.error("Dữ liệu âm thanh không hợp lệ từ API.");
+                resultMessage.textContent = 'Có lỗi xảy ra, không thể phát âm thanh.';
+                resultMessage.classList.remove('hidden');
+                listenButton.textContent = 'Nghe đoạn văn';
+                listenButton.disabled = false;
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            currentExerciseIndex++;
+            if (currentExerciseIndex < exercises.length) {
+                loadExercise();
+            } else {
+                gameScreen.innerHTML = `<h2 class="text-2xl font-bold mb-4">Bạn đã hoàn thành tất cả các bài tập!</h2><p class="text-lg">Chúc mừng bạn, ${playerName}!</p><button onclick="window.location.reload()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-300 mt-4">Làm lại từ đầu</button>`;
+            }
+        });
+
+        // Xử lý các sự kiện của màn hình
+        startButton.addEventListener('click', () => {
+            playerName = playerNameInput.value.trim();
+            if (playerName === "") {
+                playerName = "Người chơi";
+            }
+            displayPlayerName.textContent = playerName;
+            renderExerciseButtons();
+            showScreen('exercise-select-screen');
+        });
+
+        // Khởi tạo trạng thái ban đầu
+        window.onload = () => {
+            showScreen('start-screen');
+        };
+    </script>
+</body>
+</html>
